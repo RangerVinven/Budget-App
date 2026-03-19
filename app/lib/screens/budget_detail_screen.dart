@@ -32,7 +32,7 @@ class BudgetDetailScreen extends ConsumerWidget {
     final leftToBudget = budget.totalIncome - totalPlanned;
 
     return DefaultTabController(
-      initialIndex: 1, // Default to 'Spent' tab
+      initialIndex: 2, // Default to 'Remaining' tab
       length: 3,
       child: Scaffold(
         appBar: AppBar(
@@ -50,26 +50,30 @@ class BudgetDetailScreen extends ConsumerWidget {
             // Header Stats - Sticky
             Container(
               padding: const EdgeInsets.all(24.0),
-              color: Theme.of(context).colorScheme.primaryContainer,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Total Income', style: TextStyle(fontSize: 12)),
-                      Text('\$${budget.totalIncome.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text('Total Income', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                      Text('£${budget.totalIncome.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(leftToBudget >= 0 ? 'Left to Budget' : 'Overbudget', style: const TextStyle(fontSize: 12)),
+                      Text(leftToBudget >= 0 ? 'Left to Budget' : 'Overbudget', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                       Text(
-                        '\$${leftToBudget.abs().toStringAsFixed(2)}', 
+                        '£${leftToBudget.abs().toStringAsFixed(2)}', 
                         style: TextStyle(
                           fontWeight: FontWeight.bold, 
-                          fontSize: 24,
+                          fontSize: 28,
+                          letterSpacing: -1,
                           color: leftToBudget >= 0 ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.error,
                         ),
                       ),
@@ -154,7 +158,7 @@ class BudgetDetailScreen extends ConsumerWidget {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: const InputDecoration(
                     labelText: 'Amount',
-                    prefixText: '\$',
+                    prefixText: '£',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -530,7 +534,7 @@ class _IncomeRowState extends ConsumerState<_IncomeRow> {
       return ListTile(
         title: Text(widget.income.name),
         trailing: Text(
-          '\$${val.toStringAsFixed(2)}',
+          '£${val.toStringAsFixed(2)}',
           style: TextStyle(
             fontSize: 16,
             color: val < 0 ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
@@ -546,17 +550,31 @@ class _IncomeRowState extends ConsumerState<_IncomeRow> {
       ),
       trailing: SizedBox(
         width: 100,
-        child: TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          textAlign: TextAlign.right,
-          decoration: const InputDecoration(
-            prefixText: '\$',
-            border: UnderlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.right,
+            decoration: InputDecoration(
+              prefixText: '£',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            ),
+            onSubmitted: (_) => _focusNode.unfocus(),
           ),
-          onSubmitted: (_) => _focusNode.unfocus(),
         ),
       ),
     );
@@ -640,7 +658,7 @@ class _CategoryRowState extends ConsumerState<_CategoryRow> {
       return ListTile(
         title: Text(widget.item.name),
         trailing: Text(
-          '\$${val.toStringAsFixed(2)}',
+          '£${val.toStringAsFixed(2)}',
           style: TextStyle(
             fontSize: 16,
             color: val < 0 ? Theme.of(context).colorScheme.error : (val > 0 ? Theme.of(context).colorScheme.primary : Theme.of(context).textTheme.bodyLarge?.color),
@@ -656,17 +674,31 @@ class _CategoryRowState extends ConsumerState<_CategoryRow> {
       ),
       trailing: SizedBox(
         width: 100,
-        child: TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          textAlign: TextAlign.right,
-          decoration: const InputDecoration(
-            prefixText: '\$',
-            border: UnderlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.right,
+            decoration: InputDecoration(
+              prefixText: '£',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            ),
+            onSubmitted: (_) => _focusNode.unfocus(),
           ),
-          onSubmitted: (_) => _focusNode.unfocus(),
         ),
       ),
     );

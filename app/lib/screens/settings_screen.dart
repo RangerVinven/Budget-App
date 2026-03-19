@@ -160,52 +160,84 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         children: [
           ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.person)),
-            title: Text(user.name),
-            subtitle: Text(user.email),
-            trailing: const Icon(Icons.edit),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+              child: Icon(Icons.person),
+            ),
+            title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            subtitle: Text(user.email, style: const TextStyle(color: Colors.black54)),
+            trailing: const Icon(Icons.edit, color: Colors.black26),
             onTap: () => _editProfile(context, ref),
           ),
           const Divider(),
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text('Default Budget Template', style: Theme.of(context).textTheme.titleLarge),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Text('DEFAULT BUDGET TEMPLATE', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary, letterSpacing: 1.2)),
           ),
           ...defaultCategories.map((group) {
-            return ExpansionTile(
-              title: GestureDetector(
-                onTap: () => _editDefaultGroup(context, ref, group),
-                child: Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => ref.read(defaultCategoriesProvider.notifier).deleteGroup(group.id),
-              ),
-              children: [
-                ...group.items.map((item) => ListTile(
-                  title: Text(item.name),
-                  onTap: () => _editDefaultItem(context, ref, group.id, item),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, size: 20),
-                    onPressed: () => ref.read(defaultCategoriesProvider.notifier).deleteItem(group.id, item.id),
-                  ),
-                )),
-                ListTile(
-                  leading: const Icon(Icons.add),
-                  title: const Text('Add Item'),
-                  onTap: () => _addDefaultItem(context, ref, group.id),
+            return Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 24),
+                title: Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, color: Colors.black54),
+                      onPressed: () => _editDefaultGroup(context, ref, group),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      onPressed: () => ref.read(defaultCategoriesProvider.notifier).deleteGroup(group.id),
+                    ),
+                  ],
                 ),
-              ],
+                children: [
+                  ...group.items.map((item) => Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                      title: Text(item.name),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.black54),
+                            onPressed: () => _editDefaultItem(context, ref, group.id, item),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20, color: Colors.black54),
+                            onPressed: () => ref.read(defaultCategoriesProvider.notifier).deleteItem(group.id, item.id),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                      leading: Icon(Icons.add, color: Theme.of(context).colorScheme.primary),
+                      title: Text('Add Item', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500)),
+                      onTap: () => _addDefaultItem(context, ref, group.id),
+                    ),
+                  ),
+                ],
+              ),
             );
           }),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(24.0),
             child: OutlinedButton.icon(
               onPressed: () => _addDefaultGroup(context, ref),
               icon: const Icon(Icons.add),
               label: const Text('Add Category Group'),
             ),
           ),
+          const SizedBox(height: 40),
         ],
       ),
     );

@@ -15,13 +15,15 @@ class CreateBudgetScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
-  final _incomeController = TextEditingController();
+  final _incomeNameController = TextEditingController(text: 'Paycheck 1');
+  final _incomeAmountController = TextEditingController();
   DateTime? _startDate;
   DateTime? _endDate;
 
   @override
   void dispose() {
-    _incomeController.dispose();
+    _incomeNameController.dispose();
+    _incomeAmountController.dispose();
     super.dispose();
   }
 
@@ -45,7 +47,8 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       return;
     }
     
-    final income = double.tryParse(_incomeController.text) ?? 0.0;
+    final incomeAmount = double.tryParse(_incomeAmountController.text) ?? 0.0;
+    final incomeName = _incomeNameController.text.trim().isEmpty ? 'Paycheck 1' : _incomeNameController.text.trim();
     final defaultCategories = ref.read(defaultCategoriesProvider);
     
     final newBudget = Budget(
@@ -53,7 +56,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       startDate: _startDate!,
       endDate: _endDate!,
       incomes: [
-        IncomeItem(id: 'inc_${DateTime.now().millisecondsSinceEpoch}', name: 'Paycheck 1', plannedAmount: income, receivedAmount: 0.0),
+        IncomeItem(id: 'inc_${DateTime.now().millisecondsSinceEpoch}', name: incomeName, plannedAmount: incomeAmount, receivedAmount: 0.0),
       ],
       categoryGroups: defaultCategories,
     );
@@ -70,34 +73,60 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     
     return Scaffold(
       appBar: AppBar(title: const Text('Create Budget')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.date_range),
-                title: Text(_startDate == null 
-                  ? 'Select Date Range' 
-                  : '${dateFormat.format(_startDate!)} - ${dateFormat.format(_endDate!)}'),
-                onTap: () => _selectDateRange(context),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _incomeController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Expected Initial Income (e.g., Paycheck 1)',
-                prefixText: '\$ ',
-                border: OutlineInputBorder(),
+            const Text('Date Range', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black54)),
+            const SizedBox(height: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _selectDateRange(context),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.date_range, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 16),
+                    Text(
+                      _startDate == null 
+                        ? 'Select Date Range' 
+                        : '${dateFormat.format(_startDate!)} - ${dateFormat.format(_endDate!)}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
+            const Text('Initial Income Source', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black54)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _incomeNameController,
+              decoration: const InputDecoration(
+                hintText: 'e.g., Paycheck 1',
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Initial Income Amount', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black54)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _incomeAmountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                hintText: 'e.g., 2000',
+                prefixText: '£ ',
+              ),
+            ),
+            const SizedBox(height: 40),
             FilledButton(
               onPressed: _saveBudget,
-              child: const Text('Create Budget'),
+              child: const Text('Create Budget', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
