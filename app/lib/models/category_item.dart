@@ -7,8 +7,8 @@ class CategoryItem {
   const CategoryItem({
     required this.id,
     required this.name,
-    required this.plannedAmount,
-    required this.spentAmount,
+    this.plannedAmount = 0.0,
+    this.spentAmount = 0.0,
   });
 
   factory CategoryItem.fromJson(Map<String, dynamic> json) {

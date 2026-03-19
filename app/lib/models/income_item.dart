@@ -7,8 +7,8 @@ class IncomeItem {
   const IncomeItem({
     required this.id,
     required this.name,
-    required this.plannedAmount,
-    required this.receivedAmount,
+    this.plannedAmount = 0.0,
+    this.receivedAmount = 0.0,
   });
 
   factory IncomeItem.fromJson(Map<String, dynamic> json) {
