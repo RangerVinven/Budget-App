@@ -41,31 +41,49 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     }
   }
 
-  void _saveBudget() {
+  Future<void> _saveBudget() async {
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a date range')));
       return;
     }
     
-    final incomeAmount = double.tryParse(_incomeAmountController.text) ?? 0.0;
-    final incomeName = _incomeNameController.text.trim().isEmpty ? 'Paycheck 1' : _incomeNameController.text.trim();
-    final defaultCategories = ref.read(defaultCategoriesProvider);
-    
-    final newBudget = Budget(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      startDate: _startDate!,
-      endDate: _endDate!,
-      incomes: [
-        IncomeItem(id: 'inc_${DateTime.now().millisecondsSinceEpoch}', name: incomeName, plannedAmount: incomeAmount, receivedAmount: 0.0),
-      ],
-      categoryGroups: defaultCategories,
-    );
+    setState(() => _isLoading = true);
+    try {
+      final incomeAmount = double.tryParse(_incomeAmountController.text) ?? 0.0;
+      final incomeName = _incomeNameController.text.trim().isEmpty ? 'Paycheck 1' : _incomeNameController.text.trim();
+      final defaultCategories = ref.read(defaultCategoriesProvider);
+      
+      final newBudget = Budget(
+        id: '', // Server will assign ID
+        startDate: _startDate!,
+        endDate: _endDate!,
+        incomes: [
+          IncomeItem(id: '', name: incomeName, plannedAmount: incomeAmount, receivedAmount: 0.0),
+        ],
+        categoryGroups: defaultCategories,
+      );
 
-    ref.read(budgetsProvider.notifier).addBudget(newBudget);
-    ref.read(selectedBudgetProvider.notifier).selectBudget(newBudget.id);
-    
-    context.go('/dashboard/budget'); // Navigate to detail
+      await ref.read(budgetsProvider.notifier).addBudget(newBudget);
+      
+      // After adding, the state is updated. We can pick the latest budget.
+      final budgets = ref.read(budgetsProvider);
+      if (budgets.isNotEmpty) {
+        ref.read(selectedBudgetProvider.notifier).selectBudget(budgets.last.id);
+      }
+      
+      if (mounted) {
+        context.go('/dashboard/budget'); // Navigate to detail
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
+
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -125,8 +143,10 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
             ),
             const SizedBox(height: 40),
             FilledButton(
-              onPressed: _saveBudget,
-              child: const Text('Create Budget', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              onPressed: _isLoading ? null : _saveBudget,
+              child: _isLoading 
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('Create Budget', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

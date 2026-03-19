@@ -1,129 +1,202 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/budget.dart';
 import '../models/category_group.dart';
 import '../models/category_item.dart';
 import '../models/income_item.dart';
 
-// Mock initial data
-final _initialBudgets = [
-  Budget(
-    id: 'b1',
-    startDate: DateTime(DateTime.now().year, DateTime.now().month, 1),
-    endDate: DateTime(DateTime.now().year, DateTime.now().month + 1, 0),
-    incomes: [
-      const IncomeItem(id: 'inc1', name: 'Paycheck 1', plannedAmount: 2000.0, receivedAmount: 2000.0),
-      const IncomeItem(id: 'inc2', name: 'Paycheck 2', plannedAmount: 2000.0, receivedAmount: 2000.0),
-    ],
-    categoryGroups: [
-      const CategoryGroup(
-        id: 'cg1',
-        name: 'Giving',
-        items: [
-          CategoryItem(id: 'ci1', name: 'Charity', plannedAmount: 400.0, spentAmount: 400.0),
-        ],
-      ),
-      const CategoryGroup(
-        id: 'cg2',
-        name: 'Housing',
-        items: [
-          CategoryItem(id: 'ci2', name: 'Rent', plannedAmount: 1500.0, spentAmount: 1500.0),
-          CategoryItem(id: 'ci3', name: 'Water', plannedAmount: 50.0, spentAmount: 45.0),
-        ],
-      ),
-      const CategoryGroup(
-        id: 'cg3',
-        name: 'Food',
-        items: [
-          CategoryItem(id: 'ci4', name: 'Groceries', plannedAmount: 400.0, spentAmount: 320.0),
-          CategoryItem(id: 'ci5', name: 'Restaurants', plannedAmount: 150.0, spentAmount: 100.0),
-        ],
-      ),
-    ],
-  )
-];
+const baseUrl = 'http://localhost:8080/api';
+
+class ApiClient {
+  final Dio dio = Dio();
+
+  ApiClient() {
+    dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('jwt_token');
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        return handler.next(options);
+      },
+    ));
+  }
+}
+
+final apiClientProvider = Provider((ref) => ApiClient());
 
 class BudgetNotifier extends Notifier<List<Budget>> {
   @override
   List<Budget> build() {
-    return _initialBudgets;
+    // We start with an empty list and fetch when needed or on init
+    _fetchBudgets();
+    return [];
   }
 
-  void addBudget(Budget budget) {
-    state = [...state, budget];
+  Future<void> _fetchBudgets() async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final response = await client.dio.get('$baseUrl/budgets');
+      final List<dynamic> data = response.data;
+      
+      final budgets = await Future.wait(data.map((b) async {
+        final detailResponse = await client.dio.get('$baseUrl/budgets/${b['id']}');
+        return Budget.fromJson(detailResponse.data);
+      }));
+      
+      state = budgets;
+    } catch (e) {
+      print('Error fetching budgets: $e');
+    }
   }
 
-  void addIncome(String budgetId, IncomeItem income) {
-    state = state.map((b) {
-      if (b.id != budgetId) return b;
-      return b.copyWith(incomes: [...b.incomes, income]);
-    }).toList();
+  Future<void> addBudget(Budget budget) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final response = await client.dio.post('$baseUrl/budgets', data: budget.toJson());
+      final newBudget = Budget.fromJson(response.data);
+      state = [...state, newBudget];
+    } catch (e) {
+      print('Error adding budget: $e');
+    }
   }
 
-  void updateIncome(String budgetId, String incomeId, {double? plannedAmount, double? receivedAmount, String? name}) {
-    state = state.map((b) {
-      if (b.id != budgetId) return b;
-      final updatedIncomes = b.incomes.map((inc) {
-        if (inc.id != incomeId) return inc;
-        return inc.copyWith(
-          plannedAmount: plannedAmount ?? inc.plannedAmount,
-          receivedAmount: receivedAmount ?? inc.receivedAmount,
-          name: name ?? inc.name,
-        );
+  Future<void> addIncome(String budgetId, IncomeItem income) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final data = income.toJson();
+      data['budget_id'] = budgetId;
+      final response = await client.dio.post('$baseUrl/incomes', data: data);
+      final newIncome = IncomeItem.fromJson(response.data);
+      
+      state = state.map((b) {
+        if (b.id != budgetId) return b;
+        return b.copyWith(incomes: [...b.incomes, newIncome]);
       }).toList();
-      return b.copyWith(incomes: updatedIncomes);
-    }).toList();
+    } catch (e) {
+      print('Error adding income: $e');
+    }
   }
 
-  void updateCategoryItem(String budgetId, String groupId, String itemId, {double? plannedAmount, double? spentAmount, String? name}) {
-    state = state.map((b) {
-      if (b.id != budgetId) return b;
+  Future<void> updateIncome(String budgetId, String incomeId, {double? plannedAmount, double? receivedAmount, String? name}) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final budget = state.firstWhere((b) => b.id == budgetId);
+      final income = budget.incomes.firstWhere((i) => i.id == incomeId);
+      
+      final updated = income.copyWith(
+        plannedAmount: plannedAmount ?? income.plannedAmount,
+        receivedAmount: receivedAmount ?? income.receivedAmount,
+        name: name ?? income.name,
+      );
 
-      final updatedGroups = b.categoryGroups.map((g) {
-        if (g.id != groupId) return g;
-
-        final updatedItems = g.items.map((i) {
-          if (i.id != itemId) return i;
-          return i.copyWith(
-            plannedAmount: plannedAmount ?? i.plannedAmount,
-            spentAmount: spentAmount ?? i.spentAmount,
-            name: name ?? i.name,
-          );
+      await client.dio.patch('$baseUrl/incomes/$incomeId', data: updated.toJson());
+      
+      state = state.map((b) {
+        if (b.id != budgetId) return b;
+        final updatedIncomes = b.incomes.map((inc) {
+          if (inc.id != incomeId) return inc;
+          return updated;
         }).toList();
-
-        return g.copyWith(items: updatedItems);
+        return b.copyWith(incomes: updatedIncomes);
       }).toList();
-
-      return b.copyWith(categoryGroups: updatedGroups);
-    }).toList();
+    } catch (e) {
+      print('Error updating income: $e');
+    }
   }
 
-  void addCategoryItem(String budgetId, String groupId, CategoryItem item) {
-    state = state.map((b) {
-      if (b.id != budgetId) return b;
-      final updatedGroups = b.categoryGroups.map((g) {
-        if (g.id != groupId) return g;
-        return g.copyWith(items: [...g.items, item]);
+  Future<void> updateCategoryItem(String budgetId, String groupId, String itemId, {double? plannedAmount, double? spentAmount, String? name}) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final budget = state.firstWhere((b) => b.id == budgetId);
+      final group = budget.categoryGroups.firstWhere((g) => g.id == groupId);
+      final item = group.items.firstWhere((i) => i.id == itemId);
+      
+      final updated = item.copyWith(
+        plannedAmount: plannedAmount ?? item.plannedAmount,
+        spentAmount: spentAmount ?? item.spentAmount,
+        name: name ?? item.name,
+      );
+
+      await client.dio.patch('$baseUrl/items/$itemId', data: updated.toJson());
+
+      state = state.map((b) {
+        if (b.id != budgetId) return b;
+        final updatedGroups = b.categoryGroups.map((g) {
+          if (g.id != groupId) return g;
+          final updatedItems = g.items.map((i) {
+            if (i.id != itemId) return i;
+            return updated;
+          }).toList();
+          return g.copyWith(items: updatedItems);
+        }).toList();
+        return b.copyWith(categoryGroups: updatedGroups);
       }).toList();
-      return b.copyWith(categoryGroups: updatedGroups);
-    }).toList();
+    } catch (e) {
+      print('Error updating item: $e');
+    }
   }
 
-  void updateCategoryGroup(String budgetId, String groupId, {String? name}) {
-    state = state.map((b) {
-      if (b.id != budgetId) return b;
-      final updatedGroups = b.categoryGroups.map((g) {
-        if (g.id != groupId) return g;
-        return g.copyWith(name: name ?? g.name);
+  Future<void> addCategoryItem(String budgetId, String groupId, CategoryItem item) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final data = item.toJson();
+      data['group_id'] = groupId;
+      final response = await client.dio.post('$baseUrl/items', data: data);
+      final newItem = CategoryItem.fromJson(response.data);
+
+      state = state.map((b) {
+        if (b.id != budgetId) return b;
+        final updatedGroups = b.categoryGroups.map((g) {
+          if (g.id != groupId) return g;
+          return g.copyWith(items: [...g.items, newItem]);
+        }).toList();
+        return b.copyWith(categoryGroups: updatedGroups);
       }).toList();
-      return b.copyWith(categoryGroups: updatedGroups);
-    }).toList();
+    } catch (e) {
+      print('Error adding item: $e');
+    }
   }
 
-  void addCategoryGroup(String budgetId, CategoryGroup group) {
-    state = state.map((b) {
-      if (b.id != budgetId) return b;
-      return b.copyWith(categoryGroups: [...b.categoryGroups, group]);
-    }).toList();
+  Future<void> updateCategoryGroup(String budgetId, String groupId, {String? name}) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final budget = state.firstWhere((b) => b.id == budgetId);
+      final group = budget.categoryGroups.firstWhere((g) => g.id == groupId);
+      
+      final updated = group.copyWith(name: name ?? group.name);
+      await client.dio.patch('$baseUrl/groups/$groupId', data: updated.toJson());
+
+      state = state.map((b) {
+        if (b.id != budgetId) return b;
+        final updatedGroups = b.categoryGroups.map((g) {
+          if (g.id != groupId) return g;
+          return updated;
+        }).toList();
+        return b.copyWith(categoryGroups: updatedGroups);
+      }).toList();
+    } catch (e) {
+      print('Error updating group: $e');
+    }
+  }
+
+  Future<void> addCategoryGroup(String budgetId, CategoryGroup group) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final data = group.toJson();
+      data['budget_id'] = budgetId;
+      final response = await client.dio.post('$baseUrl/groups', data: data);
+      final newGroup = CategoryGroup.fromJson(response.data);
+
+      state = state.map((b) {
+        if (b.id != budgetId) return b;
+        return b.copyWith(categoryGroups: [...b.categoryGroups, newGroup]);
+      }).toList();
+    } catch (e) {
+      print('Error adding group: $e');
+    }
   }
 }
 
@@ -131,7 +204,13 @@ final budgetsProvider = NotifierProvider<BudgetNotifier, List<Budget>>(BudgetNot
 
 class SelectedBudgetNotifier extends Notifier<String?> {
   @override
-  String? build() => _initialBudgets.first.id;
+  String? build() {
+    final budgets = ref.watch(budgetsProvider);
+    if (budgets.isNotEmpty && state == null) {
+      return budgets.first.id;
+    }
+    return state;
+  }
 
   void selectBudget(String? id) {
     state = id;
@@ -143,7 +222,7 @@ final selectedBudgetProvider = NotifierProvider<SelectedBudgetNotifier, String?>
 final currentBudgetProvider = Provider<Budget?>((ref) {
   final budgets = ref.watch(budgetsProvider);
   final selectedId = ref.watch(selectedBudgetProvider);
-  if (selectedId == null) return null;
+  if (selectedId == null) return budgets.isNotEmpty ? budgets.first : null;
   try {
     return budgets.firstWhere((b) => b.id == selectedId);
   } catch (_) {

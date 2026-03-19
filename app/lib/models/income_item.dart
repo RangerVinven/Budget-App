@@ -7,9 +7,27 @@ class IncomeItem {
   const IncomeItem({
     required this.id,
     required this.name,
-    this.plannedAmount = 0.0,
-    this.receivedAmount = 0.0,
+    required this.plannedAmount,
+    required this.receivedAmount,
   });
+
+  factory IncomeItem.fromJson(Map<String, dynamic> json) {
+    return IncomeItem(
+      id: json['id'],
+      name: json['name'],
+      plannedAmount: (json['planned_amount'] as num).toDouble(),
+      receivedAmount: (json['received_amount'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'planned_amount': plannedAmount,
+      'received_amount': receivedAmount,
+    };
+  }
 
   IncomeItem copyWith({
     String? id,

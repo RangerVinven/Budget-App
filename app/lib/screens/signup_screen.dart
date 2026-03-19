@@ -1,42 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  Future<void> _login() async {
+  Future<void> _signUp() async {
     setState(() => _isLoading = true);
     try {
       final dio = Dio();
+      // Replace with your local machine's IP if running on a real device
       const baseUrl = 'http://localhost:8080';
       
-      final response = await dio.post('$baseUrl/api/login', data: {
+      await dio.post('$baseUrl/api/register', data: {
+        'name': _nameController.text,
         'email': _emailController.text,
         'password': _passwordController.text,
       });
 
-      final token = response.data['token'];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('jwt_token', token);
-
       if (mounted) {
-        context.go('/dashboard');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account created! Please sign in.')),
+        );
+        context.go('/login');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: ${e.toString()}')),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     } finally {
@@ -48,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: const IconThemeData(color: Colors.black)),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -55,25 +57,24 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withAlpha(25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.account_balance_wallet_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
-                ),
-                const SizedBox(height: 24),
                 Text(
-                  'Zero Budget',
+                  'Join Zero Budget',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: -1,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text('Give every dollar a name.', style: TextStyle(color: Colors.black54, fontSize: 16)),
+                const Text('Start your journey to financial freedom.', style: TextStyle(color: Colors.black54, fontSize: 16)),
                 const SizedBox(height: 48),
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    hintText: 'Full Name',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _emailController,
                   decoration: const InputDecoration(
@@ -94,16 +95,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: _isLoading ? null : _login,
+                    onPressed: _isLoading ? null : _signUp,
                     child: _isLoading 
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      : const Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => context.go('/signup'),
-                  child: const Text("Don't have an account? Sign Up"),
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Already have an account? Sign In'),
                 ),
               ],
             ),
