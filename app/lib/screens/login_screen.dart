@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,7 +27,11 @@ class _LoginScreenState extends State<LoginScreen> {
         'password': _passwordController.text,
       });
 
-      final token = response.data['token'];
+      final Map<String, dynamic> data = response.data is String 
+          ? Map<String, dynamic>.from(jsonDecode(response.data)) 
+          : response.data;
+      
+      final token = data['token'] as String;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('jwt_token', token);
 

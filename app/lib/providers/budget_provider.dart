@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/budget.dart';
@@ -39,11 +40,16 @@ class BudgetNotifier extends Notifier<List<Budget>> {
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.dio.get('$baseUrl/budgets');
-      final List<dynamic> data = response.data;
+      final List<dynamic> data = response.data is String 
+          ? jsonDecode(response.data) 
+          : response.data;
       
       final budgets = await Future.wait(data.map((b) async {
         final detailResponse = await client.dio.get('$baseUrl/budgets/${b['id']}');
-        return Budget.fromJson(detailResponse.data);
+        final Map<String, dynamic> detailData = detailResponse.data is String 
+            ? Map<String, dynamic>.from(jsonDecode(detailResponse.data)) 
+            : detailResponse.data;
+        return Budget.fromJson(detailData);
       }));
       
       state = budgets;
@@ -56,7 +62,10 @@ class BudgetNotifier extends Notifier<List<Budget>> {
     try {
       final client = ref.read(apiClientProvider);
       final response = await client.dio.post('$baseUrl/budgets', data: budget.toJson());
-      final newBudget = Budget.fromJson(response.data);
+      final Map<String, dynamic> data = response.data is String 
+          ? Map<String, dynamic>.from(jsonDecode(response.data)) 
+          : response.data;
+      final newBudget = Budget.fromJson(data);
       state = [...state, newBudget];
     } catch (e) {
       print('Error adding budget: $e');
@@ -69,7 +78,10 @@ class BudgetNotifier extends Notifier<List<Budget>> {
       final data = income.toJson();
       data['budget_id'] = budgetId;
       final response = await client.dio.post('$baseUrl/incomes', data: data);
-      final newIncome = IncomeItem.fromJson(response.data);
+      final Map<String, dynamic> responseData = response.data is String 
+          ? Map<String, dynamic>.from(jsonDecode(response.data)) 
+          : response.data;
+      final newIncome = IncomeItem.fromJson(responseData);
       
       state = state.map((b) {
         if (b.id != budgetId) return b;
@@ -145,7 +157,10 @@ class BudgetNotifier extends Notifier<List<Budget>> {
       final data = item.toJson();
       data['group_id'] = groupId;
       final response = await client.dio.post('$baseUrl/items', data: data);
-      final newItem = CategoryItem.fromJson(response.data);
+      final Map<String, dynamic> responseData = response.data is String 
+          ? Map<String, dynamic>.from(jsonDecode(response.data)) 
+          : response.data;
+      final newItem = CategoryItem.fromJson(responseData);
 
       state = state.map((b) {
         if (b.id != budgetId) return b;
@@ -188,7 +203,10 @@ class BudgetNotifier extends Notifier<List<Budget>> {
       final data = group.toJson();
       data['budget_id'] = budgetId;
       final response = await client.dio.post('$baseUrl/groups', data: data);
-      final newGroup = CategoryGroup.fromJson(response.data);
+      final Map<String, dynamic> responseData = response.data is String 
+          ? Map<String, dynamic>.from(jsonDecode(response.data)) 
+          : response.data;
+      final newGroup = CategoryGroup.fromJson(responseData);
 
       state = state.map((b) {
         if (b.id != budgetId) return b;
